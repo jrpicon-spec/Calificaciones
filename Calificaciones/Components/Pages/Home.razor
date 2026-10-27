@@ -1,0 +1,339 @@
+@page "/grades"
+@using System.Globalization
+@using Calificaciones.Services
+@inject Calificaciones.Services.GradeReportAlertService AlertService
+@inject DemoAuthenticationService AuthenticationService
+@inject BrandTransitionService BrandTransitionService
+@inject NavigationManager Navigation
+
+@if (canShowGrades)
+{
+<div class="grade-page">
+    <header class="brand-header">
+        <div class="brand-header__glow brand-header__glow--one"></div>
+        <div class="brand-header__glow brand-header__glow--two"></div>
+        <div class="brand-header__inner entry-reveal entry-stage--header">
+            <div class="brand-header__topline">
+                <div class="brand-lockup">
+                    <div class="brand-mark" aria-hidden="true">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div>
+                        <p class="brand-name">INSTITUTO <strong>SUDAMERICANO</strong></p>
+                        <p class="brand-product">SUDAMERICANO <span>GRADE</span></p>
+                    </div>
+                </div>
+                <button class="session-logout" type="button" disabled="@isSigningOut" @onclick="SignOutAsync">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A1.5 1.5 0 0 0 4 6.5v11A1.5 1.5 0 0 0 5.5 19H10m4-4 4-3-4-3m4 3H9"/></svg>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+            <div class="header-rule"></div>
+            <p class="header-eyebrow">PORTAL ACADÉMICO <span>•</span> EVALUACIÓN</p>
+            <h1>Sistema de<br class="mobile-break" /> calificaciones</h1>
+            <p class="header-subtitle">Tu esfuerzo, tus resultados.</p>
+            <div class="header-motif" aria-hidden="true">
+                <div class="motif-ring motif-ring--outer"></div>
+                <div class="motif-ring motif-ring--inner"></div>
+                <div class="motif-core"></div>
+            </div>
+        </div>
+        <div class="header-bottom-line"></div>
+    </header>
+
+    <main class="content-shell">
+        <section class="welcome-row entry-reveal entry-stage--intro" aria-label="Introducción">
+            <div>
+                <p class="section-kicker">SEGUIMIENTO ACADÉMICO</p>
+                <h2>Consulta de calificaciones</h2>
+                <p class="welcome-copy">Ingresa tus notas para conocer tu resultado del periodo.</p>
+            </div>
+            <div class="period-chip"><span class="chip-dot"></span> Periodo académico</div>
+        </section>
+
+        <section class="card student-card entry-reveal entry-stage--student" aria-labelledby="student-heading">
+            <div class="card-heading">
+                <div class="heading-icon heading-icon--blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.3-3.35 2.8-5.5 6.5-5.5s6.2 2.15 6.5 5.5"/></svg>
+                </div>
+                <div><p class="section-kicker">IDENTIFICACIÓN</p><h3 id="student-heading">Datos del estudiante</h3></div>
+            </div>
+            <div class="student-fields">
+                <label class="field-group">
+                    <span class="field-label">Estudiante <span class="required-mark">*</span></span>
+                    <span class="select-wrap">
+                        <select value="@selectedStudent" aria-label="Selecciona un estudiante" @onchange="OnStudentChanged">
+                            <option value="">Selecciona un estudiante</option>
+                            @foreach (var student in Students)
+                            {
+                                <option value="@student">@student</option>
+                            }
+                        </select>
+                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                    </span>
+                    <span class="field-hint">Elige tu nombre de la lista.</span>
+                    @if (reportAttempted && string.IsNullOrWhiteSpace(selectedStudent))
+                    {
+                        <span class="validation-message">Selecciona un estudiante para continuar.</span>
+                    }
+                </label>
+                <label class="field-group date-field">
+                    <span class="field-label">Fecha de evaluación</span>
+                    <span class="input-wrap date-wrap">
+                        <input type="date" aria-label="Fecha de evaluación" value="@evaluationDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" @onchange="OnDateChanged" />
+                    </span>
+                    <span class="field-hint">Fecha correspondiente al registro.</span>
+                </label>
+            </div>
+        </section>
+
+        <div class="grading-grid">
+            <section class="card grading-card entry-reveal entry-stage--first" aria-labelledby="first-term-heading">
+                <div class="term-heading">
+                    <div class="term-number term-number--blue">01</div>
+                    <div class="term-title"><p class="section-kicker">PRIMER PERIODO</p><h3 id="first-term-heading">Primer parcial</h3></div>
+                    <span class="term-total">/ 5 pts</span>
+                </div>
+                <div class="term-progress" aria-label="Ponderación del primer parcial, máximo 5 puntos"><span class="term-progress__fill term-progress__fill--blue"></span></div>
+                <div class="grade-fields">
+                    <label class="grade-field">
+                        <span class="grade-label">Seguimiento 1 <span class="weight-pill weight-pill--blue">30%</span></span>
+                        <span class="input-wrap @InputClass(0)"><input type="text" inputmode="decimal" maxlength="8" autocomplete="off" placeholder="0,00" aria-label="Nota de seguimiento 1, de 0 a 10" aria-invalid="@(ShowGradeError(0) ? "true" : "false")" aria-describedby="@(ShowGradeError(0) ? "grade-error-0" : null)" value="@gradeInputs[0]" @oninput="args => OnGradeInput(0, args)" /><span class="input-suffix">/ 10</span></span>
+                        @if (ShowGradeError(0)) { <span class="validation-message" id="grade-error-0">@GradeError(0)</span> }
+                    </label>
+                    <label class="grade-field">
+                        <span class="grade-label">Examen 1 <span class="weight-pill weight-pill--blue">20%</span></span>
+                        <span class="input-wrap @InputClass(1)"><input type="text" inputmode="decimal" maxlength="8" autocomplete="off" placeholder="0,00" aria-label="Nota de examen 1, de 0 a 10" aria-invalid="@(ShowGradeError(1) ? "true" : "false")" aria-describedby="@(ShowGradeError(1) ? "grade-error-1" : null)" value="@gradeInputs[1]" @oninput="args => OnGradeInput(1, args)" /><span class="input-suffix">/ 10</span></span>
+                        @if (ShowGradeError(1)) { <span class="validation-message" id="grade-error-1">@GradeError(1)</span> }
+                    </label>
+                </div>
+                <div class="subtotal-row">
+                    <div><span class="subtotal-label">Nota parcial 1</span><span class="subtotal-caption">Suma ponderada · máximo 5 puntos</span></div>
+                    <div class="subtotal-value subtotal-value--blue @ValueStateClass(PartialOne)"><span>@FormatPartial(PartialOne)</span><small>/ 5</small></div>
+                </div>
+            </section>
+
+            <section class="card grading-card grading-card--second entry-reveal entry-stage--second" aria-labelledby="second-term-heading">
+                <div class="term-heading">
+                    <div class="term-number term-number--teal">02</div>
+                    <div class="term-title"><p class="section-kicker">SEGUNDO PERIODO</p><h3 id="second-term-heading">Segundo parcial</h3></div>
+                    <span class="term-total">/ 5 pts</span>
+                </div>
+                <div class="term-progress" aria-label="Ponderación del segundo parcial, máximo 5 puntos"><span class="term-progress__fill term-progress__fill--teal"></span></div>
+                <div class="grade-fields">
+                    <label class="grade-field">
+                        <span class="grade-label">Seguimiento 2 <span class="weight-pill weight-pill--teal">30%</span></span>
+                        <span class="input-wrap @InputClass(2)"><input type="text" inputmode="decimal" maxlength="8" autocomplete="off" placeholder="0,00" aria-label="Nota de seguimiento 2, de 0 a 10" aria-invalid="@(ShowGradeError(2) ? "true" : "false")" aria-describedby="@(ShowGradeError(2) ? "grade-error-2" : null)" value="@gradeInputs[2]" @oninput="args => OnGradeInput(2, args)" /><span class="input-suffix">/ 10</span></span>
+                        @if (ShowGradeError(2)) { <span class="validation-message" id="grade-error-2">@GradeError(2)</span> }
+                    </label>
+                    <label class="grade-field">
+                        <span class="grade-label">Examen 2 <span class="weight-pill weight-pill--teal">20%</span></span>
+                        <span class="input-wrap @InputClass(3)"><input type="text" inputmode="decimal" maxlength="8" autocomplete="off" placeholder="0,00" aria-label="Nota de examen 2, de 0 a 10" aria-invalid="@(ShowGradeError(3) ? "true" : "false")" aria-describedby="@(ShowGradeError(3) ? "grade-error-3" : null)" value="@gradeInputs[3]" @oninput="args => OnGradeInput(3, args)" /><span class="input-suffix">/ 10</span></span>
+                        @if (ShowGradeError(3)) { <span class="validation-message" id="grade-error-3">@GradeError(3)</span> }
+                    </label>
+                </div>
+                <div class="subtotal-row">
+                    <div><span class="subtotal-label">Nota parcial 2</span><span class="subtotal-caption">Suma ponderada · máximo 5 puntos</span></div>
+                    <div class="subtotal-value subtotal-value--teal"><span>@FormatPartial(PartialTwo)</span><small>/ 5</small></div>
+                </div>
+            </section>
+        </div>
+
+        <section class="result-card entry-reveal entry-stage--result @ResultCardClass" aria-labelledby="result-heading">
+            <div class="result-decoration result-decoration--one"></div>
+            <div class="result-decoration result-decoration--two"></div>
+            <div class="result-content">
+                <div class="result-copy">
+                    <p class="result-eyebrow">RESULTADO ACADÉMICO</p>
+                    <h2 id="result-heading">Tu resultado final</h2>
+                    <p class="result-description">@ResultDescription</p>
+                    <div class="status-badge status-badge--@StatusKey"><span class="status-dot"></span> @StatusLabel</div>
+                </div>
+                <div class="score-display" role="img" aria-label="Nota final @FormatFinalAccessible, sobre 10 puntos">
+                    <div class="score-ring @(FinalScore.HasValue ? "score-ring--complete" : string.Empty)" style="--score-progress: @ScoreProgress; --score-color: @StatusColor"><div class="score-ring__inner"><span class="score-number @(FinalScore.HasValue ? "score-number--complete" : string.Empty)">@FormatFinal</span><span class="score-denominator">de 10 puntos</span></div></div>
+                </div>
+            </div>
+            <div class="result-footnote"><span class="footnote-rule"></span> Nota final = parcial 1 + parcial 2 <span class="footnote-max">Máximo 10 puntos</span></div>
+        </section>
+
+        <button class="report-button entry-reveal entry-stage--action" type="button" @onclick="ShowReportAsync">
+            <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3.75h7l4 4V20a.75.75 0 0 1-.75.75h-10.5A.75.75 0 0 1 6 20V4.5a.75.75 0 0 1 .75-.75Z"/><path d="M14 4v4h4M9 13h6M9 16.5h6"/></svg></span>
+            <span>CALCULAR Y VER REPORTE</span>
+            <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+        </button>
+        <p class="button-note"><span class="required-mark">*</span> Completa todos los campos para generar tu reporte.</p>
+
+        <footer class="page-footer"><span class="footer-brand">INSTITUTO SUDAMERICANO</span><span class="footer-separator"></span><span>Sistema de calificaciones</span><span class="footer-version">SUDAMERICANO GRADE</span></footer>
+    </main>
+</div>
+}
+
+@code {
+    private static readonly string[] Students =
+    [
+        "Ana Lucía Torres",
+        "Mateo Santiago Ruiz",
+        "Valentina Cedeño",
+        "Diego Andrés Paredes",
+        "Camila Fernanda Molina"
+    ];
+
+    private readonly string[] gradeInputs = new string[4];
+    private readonly decimal?[] gradeValues = new decimal?[4];
+    private readonly string?[] gradeErrors = new string?[4];
+    private string selectedStudent = string.Empty;
+    private DateTime evaluationDate = DateTime.Today;
+    private bool reportAttempted;
+    private bool canShowGrades;
+    private bool isSigningOut;
+
+    protected override void OnInitialized()
+    {
+        canShowGrades = AuthenticationService.IsAuthenticated;
+        if (!canShowGrades)
+        {
+            Navigation.NavigateTo("/", replace: true);
+        }
+    }
+
+    private decimal? PartialOne => CalculatePartial(0, 1);
+    private decimal? PartialTwo => CalculatePartial(2, 3);
+    private decimal? FinalScore => PartialOne.HasValue && PartialTwo.HasValue
+        ? GradeCalculator.CalculateFinal(PartialOne.Value, PartialTwo.Value)
+        : null;
+    private bool AllGradesValid => gradeValues.All(value => value.HasValue);
+
+    private string StatusLabel => FinalScore.HasValue
+        ? GradeCalculator.Classify(FinalScore.Value)
+        : "PENDIENTE";
+
+    private string StatusKey => FinalScore switch
+    {
+        >= 7m => "approved",
+        >= 5m => "complementary",
+        < 5m => "failed",
+        _ => "pending"
+    };
+
+    private string StatusColor => StatusKey switch
+    {
+        "approved" => "#45bb8a",
+        "complementary" => "#e8b253",
+        "failed" => "#f06a72",
+        _ => "#95a4b8"
+    };
+
+    private string ScoreProgress => $"{(FinalScore ?? 0m) * 36m}deg";
+    private string ResultDescription => FinalScore.HasValue
+        ? "Calificación calculada con tus cuatro notas registradas."
+        : "Completa las cuatro calificaciones para ver tu resultado.";
+    private string ResultCardClass => FinalScore.HasValue ? "result-card--complete" : string.Empty;
+    private string FormatFinal => FinalScore.HasValue ? GradeCalculator.Format(FinalScore.Value) : "—";
+    private string FormatFinalAccessible => FinalScore.HasValue
+        ? GradeCalculator.Format(FinalScore.Value)
+        : "pendiente";
+
+    private decimal? CalculatePartial(int firstIndex, int secondIndex)
+    {
+        if (!gradeValues[firstIndex].HasValue || !gradeValues[secondIndex].HasValue)
+        {
+            return null;
+        }
+
+        return GradeCalculator.CalculatePartial(gradeValues[firstIndex]!.Value,
+            gradeValues[secondIndex]!.Value);
+    }
+
+    private static string FormatPartial(decimal? score) => score.HasValue
+        ? GradeCalculator.Format(score.Value)
+        : "—";
+
+    private void OnStudentChanged(ChangeEventArgs args)
+    {
+        selectedStudent = Convert.ToString(args.Value, CultureInfo.InvariantCulture) ?? string.Empty;
+    }
+
+    private void OnDateChanged(ChangeEventArgs args)
+    {
+        var rawDate = Convert.ToString(args.Value, CultureInfo.InvariantCulture);
+        if (DateTime.TryParseExact(rawDate, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsedDate))
+        {
+            evaluationDate = parsedDate;
+        }
+    }
+
+    private void OnGradeInput(int index, ChangeEventArgs args)
+    {
+        var rawValue = Convert.ToString(args.Value, CultureInfo.InvariantCulture) ?? string.Empty;
+        gradeInputs[index] = rawValue;
+
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            gradeValues[index] = null;
+            gradeErrors[index] = null;
+            return;
+        }
+
+        if (GradeCalculator.TryParseGrade(rawValue, out var grade, out var error))
+        {
+            gradeValues[index] = grade;
+            gradeErrors[index] = null;
+        }
+        else
+        {
+            gradeValues[index] = null;
+            gradeErrors[index] = error;
+        }
+    }
+
+    private bool ShowGradeError(int index) => gradeErrors[index] is not null
+        || (reportAttempted && string.IsNullOrWhiteSpace(gradeInputs[index]));
+
+    private string GradeError(int index) => gradeErrors[index]
+        ?? "Ingresa una calificación para continuar.";
+
+    private string InputClass(int index) => ShowGradeError(index)
+        ? "input-wrap--invalid"
+        : string.IsNullOrWhiteSpace(gradeInputs[index]) ? "input-wrap--incomplete" : string.Empty;
+
+    private async Task SignOutAsync()
+    {
+        if (isSigningOut)
+        {
+            return;
+        }
+
+        isSigningOut = true;
+        canShowGrades = false;
+        AuthenticationService.SignOut();
+
+        try
+        {
+            await BrandTransitionService.PlayFarewellAsync();
+        }
+        finally
+        {
+            Navigation.NavigateTo("/", replace: true);
+        }
+    }
+
+    private static string ValueStateClass(decimal? score) => score.HasValue
+        ? "subtotal-value--ready"
+        : string.Empty;
+
+    private async Task ShowReportAsync()
+    {
+        reportAttempted = true;
+
+        if (string.IsNullOrWhiteSpace(selectedStudent) || !AllGradesValid)
+        {
+            return;
+        }
+
+        var report = GradeCalculator.BuildReport(selectedStudent, evaluationDate,
+            PartialOne!.Value, PartialTwo!.Value, FinalScore!.Value);
+
+        await AlertService.ShowAsync("Reporte de calificaciones", report, "Cerrar");
+    }
+}
